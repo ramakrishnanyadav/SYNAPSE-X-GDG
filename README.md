@@ -1,8 +1,9 @@
 # ⚡ SYNAPSE
 
 > **Your intelligence, portable across every AI model and account.**
+> SYNAPSE eliminates AI context loss by restoring your reasoning state seamlessly across platforms, sessions, and accounts.
 
-SYNAPSE is a production-grade browser infrastructure that eliminates human cognition fragmentation. It captures reasoning state from any AI conversation, extracts structured cognitive snapshots, stores them securely, and reconstructs your full context automatically when you switch accounts, models, or platforms.
+SYNAPSE is a reliability-focused browser infrastructure that eliminates human cognition fragmentation. It captures reasoning state from any AI conversation, extracts structured cognitive snapshots, stores them securely, and reconstructs your full context automatically when you switch accounts, models, or platforms.
 
 ## ⚠️ The Problem: Cognitive Fragmentation
 
@@ -10,13 +11,24 @@ Modern AI users are **multi-agent operators**. We bounce between Claude for codi
 
 Every time you switch platforms or hit an artificial rate limit, your AI loses context. You are forced to manually copy-paste code, re-explain goals, and rebuild the "cognitive state" from scratch. **This destroys workflow continuity.**
 
+> **Imagine this:**
+> You hit Claude's rate limit while debugging authentication middleware.
+> You open ChatGPT on another account.
+> Instead of re-explaining everything, SYNAPSE restores:
+> - what you're building
+> - what broke
+> - what you already decided
+> - and where you left off
+> 
+> in under 3 seconds.
+
 ## 💡 The Solution: Persistent Cognitive Continuity
 
 SYNAPSE acts as an **invisible memory bridge** across the entire AI ecosystem. 
 
 1. **Passive Monitoring**: SYNAPSE silently observes your active AI conversation, utilizing heuristic pressure detection to know exactly when a session is maturing.
 2. **Hybrid Extraction**: Before you hit a rate limit, it extracts a "Cognitive Snapshot" (Current Goal, Active Tasks, Blockers, Decisions) using ultra-fast local heuristics with a cloud API fallback.
-3. **Encrypted Storage**: Snapshots are encrypted locally at-rest via `chrome.storage.local` keys inside an `IndexedDB` vault.
+3. **Encrypted Storage**: Snapshots are encrypted locally at-rest via `chrome.storage.local` keys inside an `IndexedDB` vault. All cognitive snapshots remain local-first and encrypted at rest. Raw conversations are never transmitted unless fallback extraction is explicitly triggered.
 4. **Seamless Rehydration**: Open a new chat on *any* supported platform. SYNAPSE detects the fresh session, matches your project via semantic Jaccard similarity, and injects your exact cognitive state natively into the DOM.
 
 ---
@@ -84,9 +96,9 @@ Hackathon prototypes fail because of edge cases. SYNAPSE was architected for **c
 
 ## 🔮 Roadmap
 
-- [ ] **V1.1**: User-defined Passphrase encryption key management.
-- [ ] **V1.2**: Visual Snapshot graph (Relationship mapping between disconnected chat branches).
-- [ ] **V2.0**: Direct multi-agent handoffs (Claude passes context object natively to ChatGPT).
+- [ ] **Team continuity**
+- [ ] **Cross-device sync**
+- [ ] **Local-first encrypted memory**
 
 ---
 *Built for the GDG Hackathon.*

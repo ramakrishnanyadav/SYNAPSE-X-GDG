@@ -5,13 +5,13 @@ import { logger } from '../lib/logger';
 import { showInjectionToast } from './shared/injector';
 
 export const config: PlasmoCSConfig = {
-  matches: ['https://chatgpt.com/*'],
+  matches: ['https://gemini.google.com/*'],
   all_frames: true
 };
 
-class ChatgptMonitor extends BaseMonitor {
+class GeminiMonitor extends BaseMonitor {
   constructor() {
-    super(Platform.CHATGPT);
+    super(Platform.GEMINI);
   }
 
   protected setupObserver(): void {
@@ -31,15 +31,12 @@ class ChatgptMonitor extends BaseMonitor {
       window.clearTimeout(this.extractionDebounceTimer);
     }
     
-    // Rule 17: MutationObserver: always debounced minimum 2000ms.
+    // Debounce extraction by 2000ms to allow streaming to finish
     this.extractionDebounceTimer = window.setTimeout(async () => {
       try {
-        // Priority 3: Abort extraction mid-stream
-        const isStreaming = document.querySelector('.result-streaming');
-        if (isStreaming) return;
-
         const messages = getMessages(this.platform);
         
+        // Trigger extraction if we have at least 2 messages
         if (messages.length >= 2) {
           await this.triggerExtraction('conversation_update');
         }
@@ -51,7 +48,8 @@ class ChatgptMonitor extends BaseMonitor {
 
   private checkForNewConversation(): void {
     try {
-      if (window.location.pathname.startsWith('/c/new')) {
+      // Gemini's default URL is /app, specific chats have /app/[id]
+      if (window.location.pathname === '/' || window.location.pathname === '/app') {
         if (!sessionStorage.getItem('synapse_toast_shown')) {
           sessionStorage.setItem('synapse_toast_shown', 'true');
           chrome.runtime.sendMessage({
@@ -83,8 +81,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 try {
-  const monitor = new ChatgptMonitor();
+  const monitor = new GeminiMonitor();
   monitor.start();
 } catch (error) {
-  logger.debug(`ChatGPT monitor init failed: ${error}`);
+  logger.debug(`Gemini monitor init failed: ${error}`);
 }

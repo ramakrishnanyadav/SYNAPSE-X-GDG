@@ -24,7 +24,7 @@ export const DOM_SELECTORS = {
 export const INPUT_SELECTORS = {
   claude: 'div[contenteditable="true"], textarea',
   chatgpt: '#prompt-textarea, textarea',
-  gemini: '.ql-editor, textarea'
+  gemini: 'rich-textarea, .ql-editor, textarea'
 } as const;
 
 export const CONTEXT_WARNING_SIGNALS = {

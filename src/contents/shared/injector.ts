@@ -42,9 +42,17 @@ export function injectBrief(snapshot: CognitiveSnapshot, platform: string): void
             logger.info('Aborting injection: User already typing in contenteditable');
             return;
           }
-          // It's a contenteditable div (like Claude sometimes uses)
-          inputBox.innerText = response.brief;
-          inputBox.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          inputBox.focus();
+          // Use execCommand for React-safe contenteditable insertion
+          const success = document.execCommand('insertText', false, response.brief);
+          
+          if (!success) {
+            // Fallback for newer browsers that deprecate execCommand
+            inputBox.innerText = response.brief;
+            inputBox.dispatchEvent(new Event('input', { bubbles: true }));
+            inputBox.dispatchEvent(new Event('change', { bubbles: true }));
+          }
         }
       } catch (error) {
         logger.error('Injection failed', { error });

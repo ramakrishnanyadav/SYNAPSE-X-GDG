@@ -1,16 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { CognitiveSnapshot } from '../types/snapshot';
 import { logger } from '../lib/logger';
+import SnapshotCard from './SnapshotCard';
+import ProjectList from './ProjectList';
+import AccountHealth from './AccountHealth';
 
 export default function Dashboard() {
   const [snapshot, setSnapshot] = useState<CognitiveSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'current' | 'projects'>('current');
+  const [copyFeedback, setCopyFeedback] = useState('Copy Brief');
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchSnapshot = async () => {
       try {
         const response = await chrome.runtime.sendMessage({ type: 'GET_LATEST_SNAPSHOT' });
+        if (!isMounted) return;
+        
         if (response?.snapshot) {
           setSnapshot(response.snapshot);
         } else if (response?.error) {
@@ -18,111 +27,184 @@ export default function Dashboard() {
         }
       } catch (err) {
         logger.error('Failed to fetch snapshot for dashboard', { err });
-        setError('Failed to connect to background service');
+        if (isMounted) setError('Failed to connect to background service');
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     
     fetchSnapshot();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[400px] w-[320px] bg-slate-900 text-white">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-sm text-slate-400">Loading Cognitive State...</p>
-        </div>
-      </div>
-    );
-  }
+  const exportSnapshot = async () => {
+    const snap = await chrome.runtime.sendMessage({ type: 'GET_LATEST_SNAPSHOT' });
+    if (!snap || !snap.snapshot) return;
+    
+    const s = snap.snapshot;
+    const exportText = `
+SYNAPSE COGNITIVE EXPORT
+Generated: ${new Date().toLocaleString()}
+═══════════════════════════════
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-[400px] w-[320px] bg-slate-900 text-white p-6">
-        <div className="text-center">
-          <div className="text-red-400 mb-2">⚠️ Error</div>
-          <p className="text-sm text-slate-400">{error}</p>
-        </div>
-      </div>
-    );
-  }
+GOAL: ${s.current_goal}
 
-  if (!snapshot) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[400px] w-[320px] bg-slate-900 text-white p-6">
-        <div className="text-indigo-400 text-3xl mb-4">🧠</div>
-        <h2 className="text-lg font-semibold mb-2">No Active Session</h2>
-        <p className="text-sm text-slate-400 text-center">
-          Open a supported AI platform to start capturing your cognitive state.
-        </p>
-      </div>
-    );
-  }
+IN PROGRESS:
+${s.active_tasks?.map((t: string) => `• ${t}`).join('\n') || 'None'}
+
+BLOCKED ON:
+${s.blockers?.map((b: string) => `• ${b}`).join('\n') || 'None'}
+
+DECISIONS MADE:
+${s.decisions_made?.map((d: string) => `• ${d}`).join('\n') || 'None'}
+
+Platform: ${s.platform}
+Captured: ${new Date(s.timestamp).toLocaleString()}
+Confidence: ${Math.round(s.confidence_score * 100)}%
+    `.trim();
+    
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `synapse-export-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyBriefToClipboard = async () => {
+    const snap = await chrome.runtime.sendMessage({ type: 'GET_LATEST_SNAPSHOT' });
+    if (!snap || !snap.snapshot) return;
+    
+    const s = snap.snapshot;
+    const brief = `
+SYNAPSE CONTEXT BRIEF
+─────────────────────────────────────
+GOAL: ${s.current_goal}
+
+IN PROGRESS:
+${s.active_tasks?.map((t: string) => `• ${t}`).join('\n') || 'None'}
+
+BLOCKED ON:
+${s.blockers?.map((b: string) => `• ${b}`).join('\n') || 'None'}
+
+ALREADY DECIDED:
+${s.decisions_made?.map((d: string) => `• ${d}`).join('\n') || 'None'}
+─────────────────────────────────────
+Continue from exactly here.
+    `.trim();
+    
+    try {
+      await navigator.clipboard.writeText(brief);
+      setCopyFeedback('Copied!');
+      setTimeout(() => setCopyFeedback('Copy Brief'), 2000);
+    } catch (e) {
+      setCopyFeedback('Failed to copy');
+      setTimeout(() => setCopyFeedback('Copy Brief'), 2000);
+    }
+  };
 
   return (
-    <div className="flex flex-col h-[400px] w-[320px] bg-slate-900 text-slate-200 overflow-y-auto">
-      <div className="sticky top-0 bg-slate-900/90 backdrop-blur border-b border-slate-800 p-4 z-10">
-        <div className="flex justify-between items-center mb-1">
-          <h1 className="font-bold text-white tracking-tight">SYNAPSE</h1>
-          <span className="px-2 py-0.5 text-[10px] font-medium bg-indigo-500/20 text-indigo-300 rounded-full uppercase tracking-wider">
-            {snapshot.platform}
-          </span>
+    <div className="flex flex-col h-[500px] w-[360px] bg-[#0f0f0f] text-gray-200 font-sans">
+      <div className="shrink-0 bg-[#0f0f0f] border-b border-[#1e1e2e] p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="text-indigo-500 text-xl font-bold">⚡</div>
+          <h1 className="font-bold text-white tracking-tight text-sm">SYNAPSE</h1>
         </div>
-        <p className="text-xs text-slate-400 truncate" title={snapshot.current_goal}>
-          {snapshot.current_goal}
-        </p>
+        
+        <div className="flex bg-[#1e1e2e] rounded-md p-1 relative">
+          <button 
+            className={`flex-1 text-[11px] py-1.5 rounded-sm font-medium transition-colors z-10 ${activeTab === 'current' ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+            onClick={() => setActiveTab('current')}
+          >
+            Current State
+          </button>
+          <button 
+            className={`flex-1 text-[11px] py-1.5 rounded-sm font-medium transition-colors z-10 ${activeTab === 'projects' ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+            onClick={() => setActiveTab('projects')}
+          >
+            All Projects
+          </button>
+          <div 
+            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#2e2e3e] rounded-sm transition-transform duration-200 ease-out shadow-sm ${activeTab === 'current' ? 'translate-x-0' : 'translate-x-[calc(100%+4px)]'}`}
+            style={{ left: '4px' }}
+          ></div>
+        </div>
       </div>
 
-      <div className="p-4 space-y-5">
-        {snapshot.active_tasks.length > 0 && (
-          <section>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">In Progress</h3>
-            <ul className="space-y-1.5">
-              {snapshot.active_tasks.map((task, i) => (
-                <li key={i} className="text-sm flex items-start gap-2">
-                  <span className="text-indigo-400 mt-0.5">▪</span>
-                  <span>{task}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {snapshot.blockers.length > 0 && (
-          <section>
-            <h3 className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-2">Blocked On</h3>
-            <ul className="space-y-1.5">
-              {snapshot.blockers.map((blocker, i) => (
-                <li key={i} className="text-sm flex items-start gap-2 text-rose-200">
-                  <span className="text-rose-500 mt-0.5">▪</span>
-                  <span>{blocker}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {snapshot.decisions_made.length > 0 && (
-          <section>
-            <h3 className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-2">Decisions</h3>
-            <ul className="space-y-1.5">
-              {snapshot.decisions_made.map((decision, i) => (
-                <li key={i} className="text-sm flex items-start gap-2 text-emerald-200">
-                  <span className="text-emerald-500 mt-0.5">▪</span>
-                  <span>{decision}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        {activeTab === 'current' ? (
+          <div className="space-y-4">
+            <AccountHealth />
+            
+            <div>
+              <h2 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Latest Cognitive Snapshot</h2>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                  <p className="text-xs text-gray-400">Syncing brain state...</p>
+                </div>
+              ) : error ? (
+                <div className="p-4 border border-rose-500/30 bg-rose-500/10 rounded-lg text-center">
+                  <div className="text-rose-400 text-xs">{error}</div>
+                </div>
+              ) : snapshot ? (
+                <div className="space-y-3">
+                  <SnapshotCard snapshot={snapshot} />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={copyBriefToClipboard}
+                      className="flex-1 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-medium rounded transition-colors"
+                    >
+                      {copyFeedback}
+                    </button>
+                    <button
+                      onClick={exportSnapshot}
+                      className="flex-1 py-2 bg-[#2e2e3e] hover:bg-[#3e3e4e] text-white text-[11px] font-medium rounded transition-colors border border-[#3e3e4e]"
+                    >
+                      Export ↓
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 border border-dashed border-[#2e2e3e] rounded-lg flex flex-col items-center text-center mt-2">
+                  <div className="text-gray-600 text-2xl mb-2">🧠</div>
+                  <p className="text-xs text-gray-400 leading-relaxed mb-4">No active session found.<br/>Open Claude or ChatGPT to start capturing.</p>
+                  <button 
+                    onClick={() => chrome.tabs.create({ url: 'https://claude.ai/new' })}
+                    className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-medium rounded transition-colors shadow-sm"
+                  >
+                    Open Claude to start
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+             <h2 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Continuity Graph</h2>
+             <ProjectList />
+          </div>
         )}
       </div>
-      
-      <div className="mt-auto p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
-        <span>Conf: {Math.round(snapshot.confidence_score * 100)}%</span>
-        <span>{new Date(snapshot.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-      </div>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #0f0f0f;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #2e2e3e;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #4a4a5a;
+        }
+      `}</style>
     </div>
   );
 }

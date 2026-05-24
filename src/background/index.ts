@@ -1,8 +1,19 @@
 import { logger } from '../lib/logger';
-import { initializeDatabase, saveSnapshot, getLatestSnapshot } from './storage';
+import { initializeDatabase, saveSnapshot, getLatestSnapshot, getAllProjects } from './storage';
 import { smartExtract } from './extraction';
 import { generateReconstructionBrief } from './reconstruction';
 import { Platform } from '../types/platform';
+
+chrome.runtime.onInstalled.addListener(() => {
+  logger.info('SYNAPSE service worker installed');
+});
+
+const keepAlive = () => {
+  chrome.runtime.getPlatformInfo(() => {
+    // Keeps service worker awake
+  });
+};
+setInterval(keepAlive, 20000);
 
 initializeDatabase().catch(err => {
   logger.error('Failed to initialize DB on startup', { err });
@@ -17,6 +28,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GET_LATEST_SNAPSHOT') {
     getLatestSnapshot().then(snapshot => {
       sendResponse({ snapshot });
+    }).catch(error => {
+      sendResponse({ error: String(error) });
+    });
+    return true;
+  }
+
+  if (message.type === 'GET_ALL_PROJECTS') {
+    getAllProjects().then(projects => {
+      sendResponse({ projects });
     }).catch(error => {
       sendResponse({ error: String(error) });
     });
@@ -38,8 +58,9 @@ async function handleExtraction(payload: { messages: string[], platform: Platfor
   try {
     const { messages, platform, account_identifier } = payload;
     
-    // In production, we'd pull the real API key from settings
-    const dummyApiKey = 'sk-ant-dummy-key'; 
+    // Using provided Groq API key for the hackathon
+    // WARNING: Replace this placeholder with your real key before demo!
+    const dummyApiKey = 'gsk_YOUR_GROQ_API_KEY_HERE'; 
     
     const snapshot = await smartExtract(messages, platform, account_identifier, dummyApiKey);
     await saveSnapshot(snapshot);

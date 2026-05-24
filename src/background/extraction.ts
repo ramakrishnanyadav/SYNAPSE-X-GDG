@@ -61,13 +61,10 @@ function calculateConfidence(goal: string, decisions: string[], blockers: string
 
 export function extractLocally(messages: string[], platform: Platform, account_identifier: string): CognitiveSnapshot {
   const naturalLines = messages
-    .join('\
-')
-    .split('\
-')
+    .join('\n')
+    .split('\n')
     .filter(isNaturalLanguage)
-    .join('\
-')
+    .join('\n')
     .toLowerCase();
     
   const GOAL_PATTERNS = [
@@ -86,11 +83,29 @@ export function extractLocally(messages: string[], platform: Platform, account_i
     /(?:stuck on|blocked by|can't figure out)\\s+(?!.*[{};])([\\w\\s]+?)(?:\\.|,|\\n|$)/gi
   ];
   
-  const goal = extractFirstMatch(naturalLines, GOAL_PATTERNS);
-  const decisions = extractAllMatches(naturalLines, DECISION_PATTERNS).slice(0, 3);
-  const blockers = extractAllMatches(naturalLines, BLOCKER_PATTERNS).slice(0, 2);
+  let goal = extractFirstMatch(naturalLines, GOAL_PATTERNS);
+  const rawDecisions = extractAllMatches(naturalLines, DECISION_PATTERNS).slice(0, 3);
+  const rawBlockers = extractAllMatches(naturalLines, BLOCKER_PATTERNS).slice(0, 2);
   
-  const confidence = calculateConfidence(goal, decisions, blockers);
+  // Guarantee Zod schema compliance by strictly truncating to max 100 chars
+  const decisions = rawDecisions.map(d => d.length > 95 ? d.substring(0, 95) + '...' : d);
+  const blockers = rawBlockers.map(b => b.length > 95 ? b.substring(0, 95) + '...' : b);
+  
+  // Hackathon resilient fallback: if no explicit goal matched via Regex,
+  // use the most recent message as the goal so the UI updates dynamically.
+  if (!goal && messages.length > 0) {
+    const lastMsg = messages[messages.length - 1];
+    // Clean up markdown/code for the title
+    const cleanMsg = lastMsg.replace(/```[\\s\\S]*?```/g, '').replace(/\\n/g, ' ').trim();
+    if (cleanMsg) {
+      goal = cleanMsg.substring(0, 65) + (cleanMsg.length > 65 ? '...' : '');
+    } else {
+      goal = 'Working on code task';
+    }
+  }
+  
+  let confidence = calculateConfidence(goal, decisions, blockers);
+  // Remove the artificial 0.8 bump so the Groq API actually triggers for unstructured prompts
   
   return {
     snapshot_id: crypto.randomUUID(),
@@ -123,9 +138,7 @@ export async function smartExtract(
   
   // TIER 2 - Claude API Extraction with Timeout Fallback
   logger.info('Local extraction insufficient, calling API');
-  const context = messages.slice(-EXTRACTION_CONFIG.MAX_MESSAGES_TO_EXTRACT).join('\
-\
-');
+  const context = messages.slice(-EXTRACTION_CONFIG.MAX_MESSAGES_TO_EXTRACT).join('\n\n');
   
   const timeoutPromise = new Promise<CognitiveSnapshot>((resolve) => {
     setTimeout(() => {
@@ -139,7 +152,7 @@ export async function smartExtract(
     }, EXTRACTION_CONFIG.API_TIMEOUT_MS);
   });
   
-  const extractionPromise = extractWithClaude(context, apiKey).then(apiResult => {
+  const extractionPromise = extractWithGroq(context, apiKey).then(apiResult => {
     if (typeof apiResult === 'string') {
       return {
         ...localSnapshot,
@@ -163,7 +176,6 @@ export async function smartExtract(
     };
   }).catch(error => {
     logger.error('Extraction promise failed', { error });
-    // In case of immediate rejection, fallback anyway
     return {
       ...DEMO_FALLBACK_SNAPSHOT,
       snapshot_id: crypto.randomUUID(),
@@ -175,34 +187,35 @@ export async function smartExtract(
   return Promise.race([extractionPromise, timeoutPromise]);
 }
 
-async function extractWithClaude(
+async function extractWithGroq(
   context: string,
   apiKey: string,
   retryCount = 0
 ): Promise<ExtractionResult | string> {
   const userPrompt = PROMPTS.EXTRACTION_USER.replace('{CONTEXT}', context);
   
-  const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+  const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json'
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1000,
-      system: PROMPTS.EXTRACTION_SYSTEM,
-      messages: [{ role: 'user', content: userPrompt }]
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: PROMPTS.EXTRACTION_SYSTEM },
+        { role: 'user', content: userPrompt }
+      ]
     })
-  }, EXTRACTION_CONFIG.API_TIMEOUT_MS + 5000); // Allow fetch to run slightly longer than the Promise.race timeout
+  }, EXTRACTION_CONFIG.API_TIMEOUT_MS + 5000);
   
   if (response.status === 429) {
     if (retryCount >= EXTRACTION_CONFIG.API_RETRY_COUNT) {
       throw new ExtractionError('Rate limit exceeded', true);
     }
     await new Promise(resolve => setTimeout(resolve, EXTRACTION_CONFIG.RATE_LIMIT_RETRY_DELAY_MS));
-    return extractWithClaude(context, apiKey, retryCount + 1);
+    return extractWithGroq(context, apiKey, retryCount + 1);
   }
   
   if (!response.ok) {
@@ -210,7 +223,7 @@ async function extractWithClaude(
   }
 
   const data = await response.json();
-  const content = data.content[0].text;
+  const content = data.choices[0].message.content;
   
   try {
     const json = JSON.parse(content);
@@ -218,7 +231,7 @@ async function extractWithClaude(
   } catch (parseError) {
     logger.warn('Malformed JSON from API', { parseError });
     if (retryCount === 0) {
-      return extractWithClaude(context, apiKey, 1);
+      return extractWithGroq(context, apiKey, 1);
     }
     return context;
   }

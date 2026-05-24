@@ -24,8 +24,7 @@ export async function generateReconstructionBrief(snapshot: CognitiveSnapshot): 
 
     const MAX_BRIEF_CHARS = 2500;
     if (brief.length > MAX_BRIEF_CHARS) {
-      brief = brief.substring(0, MAX_BRIEF_CHARS) + '\
-...[Truncated to meet platform limits]';
+      brief = brief.substring(0, MAX_BRIEF_CHARS) + '\n...[Truncated to meet platform limits]';
     }
 
     return brief;
@@ -37,8 +36,7 @@ export async function generateReconstructionBrief(snapshot: CognitiveSnapshot): 
 
 function formatList(items: string[], emptyState: string): string {
   if (!items || items.length === 0) return `- ${emptyState}`;
-  return items.map(item => `- ${item}`).join('\
-');
+  return items.map(item => `- ${item}`).join('\n');
 }
 
 function formatPlatform(platform: Platform): string {

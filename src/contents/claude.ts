@@ -39,10 +39,9 @@ class ClaudeMonitor extends BaseMonitor {
       if (isStreaming) return;
 
       const messages = getMessages(this.platform);
-      const pressure = detectContextPressure(messages, this.platform);
       
-      if (pressure > 0.8) {
-        await this.triggerExtraction('context_pressure');
+      if (messages.length >= 2) {
+        await this.triggerExtraction('conversation_update');
       }
     }, this.DOM_STABLE_WAIT_MS);
   }

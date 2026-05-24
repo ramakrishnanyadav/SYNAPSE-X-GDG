@@ -4,6 +4,7 @@ import { CognitiveSnapshotSchema } from '../lib/schemas';
 import { STORAGE_CONFIG } from '../lib/constants';
 import { logger } from '../lib/logger';
 import { encrypt, decrypt, getOrCreateKey, verifyStorageIntegrity } from '../lib/crypto';
+import { Project } from '../types/project';
 
 interface EncryptedSnapshotRecord {
   snapshot_id: string;
@@ -129,8 +130,8 @@ export async function getLatestSnapshot(projectId?: string): Promise<CognitiveSn
 }
 
 function cosineSimilaritySimple(a: string, b: string): number {
-  const wordsA = a.toLowerCase().split(/\\s+/);
-  const wordsB = b.toLowerCase().split(/\\s+/);
+  const wordsA = a.toLowerCase().split(/\s+/);
+  const wordsB = b.toLowerCase().split(/\s+/);
   
   const setA = new Set(wordsA);
   const setB = new Set(wordsB);
@@ -168,3 +169,49 @@ async function inferProjectId(snapshot: CognitiveSnapshot): Promise<string> {
   }
   return crypto.randomUUID();
 }
+
+export async function getAllProjects(): Promise<Project[]> {
+  try {
+    const database = await getDB();
+    const key = await getOrCreateKey();
+    const records = await database.getAllFromIndex(STORAGE_CONFIG.STORE_NAME, 'by-timestamp');
+    
+    const projectsMap = new Map<string, Project>();
+    
+    for (const record of records) {
+      try {
+        const decryptedJson = await decrypt(record.data, key);
+        const snapshot = JSON.parse(decryptedJson) as CognitiveSnapshot;
+        
+        const pid = snapshot.project_id;
+        if (!projectsMap.has(pid)) {
+          projectsMap.set(pid, {
+            project_id: pid,
+            name: snapshot.current_goal || 'Untitled Project',
+            updated_at: snapshot.timestamp,
+            snapshot_ids: [snapshot.snapshot_id],
+            platform: [snapshot.platform]
+          });
+        } else {
+          const p = projectsMap.get(pid)!;
+          p.snapshot_ids.push(snapshot.snapshot_id);
+          if (!p.platform.includes(snapshot.platform)) {
+            p.platform.push(snapshot.platform);
+          }
+          if (snapshot.timestamp > p.updated_at) {
+            p.updated_at = snapshot.timestamp;
+            p.name = snapshot.current_goal || p.name;
+          }
+        }
+      } catch (err) {
+        continue;
+      }
+    }
+    
+    return Array.from(projectsMap.values()).sort((a, b) => b.updated_at - a.updated_at);
+  } catch (error) {
+    logger.error('Failed to get all projects', { error });
+    return [];
+  }
+}
+

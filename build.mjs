@@ -1,5 +1,6 @@
 import esbuild from 'esbuild';
 import fs from 'fs';
+import { execSync } from 'child_process';
 
 const manifest = {
   "manifest_version": 3,
@@ -17,6 +18,10 @@ const manifest = {
     {
       "matches": ["https://chatgpt.com/*"],
       "js": ["chatgpt.js"]
+    },
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["gemini.js"]
     }
   ],
   "action": {
@@ -26,7 +31,9 @@ const manifest = {
   "host_permissions": [
     "https://claude.ai/*",
     "https://chatgpt.com/*",
-    "https://gemini.google.com/*"
+    "https://gemini.google.com/*",
+    "https://api.anthropic.com/*",
+    "https://api.groq.com/*"
   ]
 };
 
@@ -39,16 +46,24 @@ const reactStr = "import React from 'react';\nimport { createRoot } from 'react-
 fs.writeFileSync('src/popup/index.tsx', reactStr);
 
 try {
+  console.log('Building Tailwind CSS...');
+  execSync('npx @tailwindcss/cli -i src/style.css -o build/styles.css', { stdio: 'inherit' });
+} catch (e) {
+  console.error('Tailwind build failed', e);
+}
+
+try {
   await esbuild.build({
     entryPoints: {
       'background': 'src/background/index.ts',
       'claude': 'src/contents/claude.ts',
       'chatgpt': 'src/contents/chatgpt.ts',
+      'gemini': 'src/contents/gemini.ts',
       'popup': 'src/popup/index.tsx'
     },
     outdir: 'build',
     bundle: true,
-    format: 'esm',
+    format: 'iife',
     target: ['chrome100'],
     define: { 'process.env.NODE_ENV': '"production"' }
   });
