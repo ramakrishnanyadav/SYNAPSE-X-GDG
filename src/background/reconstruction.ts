@@ -24,7 +24,8 @@ export async function generateReconstructionBrief(snapshot: CognitiveSnapshot): 
 
     const MAX_BRIEF_CHARS = 2500;
     if (brief.length > MAX_BRIEF_CHARS) {
-      brief = brief.substring(0, MAX_BRIEF_CHARS) + '\\n...[Truncated to meet platform limits]';
+      brief = brief.substring(0, MAX_BRIEF_CHARS) + '\
+...[Truncated to meet platform limits]';
     }
 
     return brief;
@@ -35,8 +36,9 @@ export async function generateReconstructionBrief(snapshot: CognitiveSnapshot): 
 }
 
 function formatList(items: string[], emptyState: string): string {
-  if (!items || items.length === 0) return \`- \${emptyState}\`;
-  return items.map(item => \`- \${item}\`).join('\\n');
+  if (!items || items.length === 0) return `- ${emptyState}`;
+  return items.map(item => `- ${item}`).join('\
+');
 }
 
 function formatPlatform(platform: Platform): string {
@@ -53,9 +55,9 @@ function getRelativeTimeString(timestamp: number): string {
   const diffMs = Date.now() - timestamp;
   const diffMins = Math.floor(diffMs / 60000);
   
-  if (diffMins < 60) return \`\${diffMins} minutes ago\`;
+  if (diffMins < 60) return `${diffMins} minutes ago`;
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return \`\${diffHours} hours ago\`;
+  if (diffHours < 24) return `${diffHours} hours ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return \`\${diffDays} days ago\`;
+  return `${diffDays} days ago`;
 }

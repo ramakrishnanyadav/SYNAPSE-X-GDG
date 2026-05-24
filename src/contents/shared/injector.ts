@@ -60,7 +60,7 @@ export function showInjectionToast(snapshot: CognitiveSnapshot, platform: string
 
     const toast = document.createElement('div');
     toast.id = 'synapse-preview-toast';
-    toast.innerHTML = \`
+    toast.innerHTML = `
       <style>
         @keyframes synapse-slide-in {
           from { transform: translateY(20px); opacity: 0; }
@@ -86,10 +86,10 @@ export function showInjectionToast(snapshot: CognitiveSnapshot, platform: string
           ⚡ SYNAPSE — Resume Session?
         </div>
         <div style="font-size:12px;opacity:0.6;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;">
-          \${snapshot.decisions_made[0] ?? 'Previous session detected'}
+          ${snapshot.decisions_made[0] ?? 'Previous session detected'}
         </div>
         <div style="opacity:0.8;margin-bottom:12px;font-size:13px;line-height:1.4">
-          \${snapshot.current_goal}
+          ${snapshot.current_goal}
         </div>
         <div style="display:flex;gap:8px">
           <button id="synapse-inject" style="
@@ -106,7 +106,7 @@ export function showInjectionToast(snapshot: CognitiveSnapshot, platform: string
           " onmouseover="this.style.background='#333'" onmouseout="this.style.background='transparent'">Dismiss</button>
         </div>
       </div>
-    \`;
+    `;
     
     document.body.appendChild(toast);
     
@@ -126,6 +126,6 @@ export function showInjectionToast(snapshot: CognitiveSnapshot, platform: string
       toast.remove();
     });
   } catch (error) {
-    logger.debug(\`Failed to show injection toast: \${error}\`);
+    logger.debug(`Failed to show injection toast: ${error}`);
   }
 }

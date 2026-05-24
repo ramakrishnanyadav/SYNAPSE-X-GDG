@@ -61,10 +61,13 @@ function calculateConfidence(goal: string, decisions: string[], blockers: string
 
 export function extractLocally(messages: string[], platform: Platform, account_identifier: string): CognitiveSnapshot {
   const naturalLines = messages
-    .join('\\n')
-    .split('\\n')
+    .join('\
+')
+    .split('\
+')
     .filter(isNaturalLanguage)
-    .join('\\n')
+    .join('\
+')
     .toLowerCase();
     
   const GOAL_PATTERNS = [
@@ -120,7 +123,9 @@ export async function smartExtract(
   
   // TIER 2 - Claude API Extraction with Timeout Fallback
   logger.info('Local extraction insufficient, calling API');
-  const context = messages.slice(-EXTRACTION_CONFIG.MAX_MESSAGES_TO_EXTRACT).join('\\n\\n');
+  const context = messages.slice(-EXTRACTION_CONFIG.MAX_MESSAGES_TO_EXTRACT).join('\
+\
+');
   
   const timeoutPromise = new Promise<CognitiveSnapshot>((resolve) => {
     setTimeout(() => {
@@ -201,7 +206,7 @@ async function extractWithClaude(
   }
   
   if (!response.ok) {
-    throw new ExtractionError(\`API Error: \${response.statusText}\`);
+    throw new ExtractionError(`API Error: ${response.statusText}`);
   }
 
   const data = await response.json();

@@ -9,22 +9,26 @@
     "build": "plasmo build"
   },
   "dependencies": {
-    "idb": "^8.0.0",
+    "idb": "^8.0.3",
     "plasmo": "0.89.4",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "zod": "^3.23.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/chrome": "0.0.258",
     "@types/node": "20.11.5",
-    "@types/react": "18.2.48",
-    "@types/react-dom": "18.2.18",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
     "prettier": "3.2.4",
     "typescript": "5.3.3"
   },
   "manifest": {
-    "permissions": ["storage", "activeTab", "scripting"],
+    "permissions": [
+      "storage",
+      "activeTab",
+      "scripting"
+    ],
     "host_permissions": [
       "https://claude.ai/*",
       "https://chatgpt.com/*",

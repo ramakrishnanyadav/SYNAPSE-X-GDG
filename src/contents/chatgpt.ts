@@ -70,5 +70,5 @@ try {
   const monitor = new ChatgptMonitor();
   monitor.start();
 } catch (error) {
-  logger.debug(\`ChatGPT monitor init failed: \${error}\`);
+  logger.debug(`ChatGPT monitor init failed: ${error}`);
 }

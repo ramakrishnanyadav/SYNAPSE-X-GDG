@@ -74,5 +74,5 @@ try {
   const monitor = new ClaudeMonitor();
   monitor.start();
 } catch (error) {
-  logger.debug(\`Claude monitor init failed: \${error}\`);
+  logger.debug(`Claude monitor init failed: ${error}`);
 }

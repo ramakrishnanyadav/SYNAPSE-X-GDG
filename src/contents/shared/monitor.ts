@@ -56,9 +56,9 @@ export abstract class BaseMonitor {
       this.setupObserver();
       this.setupEventListeners();
       this.resetInactivityTimer();
-      logger.info(\`Started monitor for \${this.platform}\`);
+      logger.info(`Started monitor for ${this.platform}`);
     } catch (error) {
-      logger.debug(\`Monitor start failed silently: \${error}\`);
+      logger.debug(`Monitor start failed silently: ${error}`);
     }
   }
 
@@ -68,9 +68,9 @@ export abstract class BaseMonitor {
       this.removeEventListeners();
       if (this.inactivityTimer !== null) window.clearTimeout(this.inactivityTimer);
       if (this.extractionDebounceTimer !== null) window.clearTimeout(this.extractionDebounceTimer);
-      logger.info(\`Stopped monitor for \${this.platform}\`);
+      logger.info(`Stopped monitor for ${this.platform}`);
     } catch (error) {
-      logger.debug(\`Monitor stop failed silently: \${error}\`);
+      logger.debug(`Monitor stop failed silently: ${error}`);
     }
   }
 
@@ -117,7 +117,7 @@ export abstract class BaseMonitor {
 
       // Priority 5 UX - Show smooth capturing state
       const toast = document.createElement('div');
-      toast.innerHTML = \`<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;font-family:sans-serif;z-index:999999;opacity:0.9;box-shadow:0 4px 12px rgba(0,0,0,0.2);">🧠 Capturing cognitive state...</div>\`;
+      toast.innerHTML = `<div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;font-family:sans-serif;z-index:999999;opacity:0.9;box-shadow:0 4px 12px rgba(0,0,0,0.2);">🧠 Capturing cognitive state...</div>`;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
 
@@ -133,7 +133,7 @@ export abstract class BaseMonitor {
         });
       });
     } catch (error) {
-      logger.debug(\`Extraction trigger failed silently: \${error}\`);
+      logger.debug(`Extraction trigger failed silently: ${error}`);
     }
   }
 }
